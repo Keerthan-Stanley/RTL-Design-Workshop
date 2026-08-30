@@ -13,6 +13,39 @@ BabySoC integrates three blocks:
 
 <img width="937" height="227" alt="Screenshot 2026-08-26 193734" src="https://github.com/user-attachments/assets/38368b9d-26a5-4703-8acf-f133192ccf26" />
 
+PLL — avsdpll
+1. Function: Phase-Locked Loop — generates a stable, higher-frequency system clock (CLK) from a lower-frequency reference input (REF)
+
+2. Inputs: ENb_CP (charge pump enable, active-low), ENb_VCO (VCO enable, active-low), REF (reference clock), VCO_IN
+- Output: CLK — feeds the RVMYTH core
+
+3. Why it's needed: the core needs a clock of a specific frequency/quality; rather than relying on an external clock source directly, the PLL locks onto the reference and multiplies/stabilizes it on-chip
+
+4. In synthesis: treated as a black-box cell (behavioral model from .lib), not decomposed into gates — it's analog IP, not synthesizable digital logic
+
+
+Core — rvmyth
+1. Function: a RISC-V CPU core (RV32I-class), the actual programmable compute block of the SoC
+Inputs: CLK (from PLL), reset
+
+2. Output: OUT (renamed RV_TO_DAC on the wire) — a digital value the core computes/updates each cycle, fed to the DAC
+
+3. Why it's the largest block: contains the register file, ALU, control logic, pipeline/sequencing logic — this is why it dominates cell count (~5,000 of the SoC's 5,285 total cells; 1,144+ flip-flops alone for registers/pipeline state)
+
+4. In synthesis: fully decomposed into real Sky130 gates (NAND, NOR, MUX, DFF, etc.) — this is genuine synthesizable RTL, unlike the PLL/DAC
+
+
+DAC — avsddac
+1. Function: Digital-to-Analog Converter — takes the core's digital output and converts it to an analog-equivalent signal
+
+2. Inputs: D (digital input, from RV_TO_DAC), VREFH (reference high voltage
+ 
+3. Output: OUT — the final SoC output, an analog-equivalent value (visible in your waveform as a real type, e.g. 0.1674, not a digital bit pattern)
+
+4. Why it's needed: it's the SoC's actual output interface — converting the CPU's internal digital computation into something that could drive an external analog circuit
+
+5. In synthesis: same as PLL — black-box behavioral model, not decomposed into gates
+
 
 ## Flow Summary
 
